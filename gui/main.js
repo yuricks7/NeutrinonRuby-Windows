@@ -30,6 +30,8 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
+let currentProcess = null; // 中断用の変数
+
 // WSLのRubyを呼び出してNEUTRINOを実行
 ipcMain.handle("run-neutrino", async (event, { song, parts, modelMap }) => {
   return new Promise((resolve, reject) => {
@@ -40,24 +42,59 @@ ipcMain.handle("run-neutrino", async (event, { song, parts, modelMap }) => {
     // RubyにsongとmodelMapJsonを渡す
     const cmd = `wsl ruby ${ROOT_WSL_DIRECTORY}neutrino.rb "${song}" '${modelMapJson}'`;
 
-    const child = exec(cmd);
+    currentProcess = exec(cmd);
 
-    child.stdout.on("data", data => {
+    currentProcess.stdout.on("data", data => {
       event.sender.send("log", data.toString());
     });
 
-    child.stderr.on("data", data => {
+    currentProcess.stderr.on("data", data => {
       event.sender.send("log", data.toString());
     });
 
-    child.on("close", code => {
+    currentProcess.on("close", code => {
+      currentProcess = null; // 終了したらクリア
       if (code === 0) {
         resolve();
       } else {
         reject(new Error(`NEUTRINO exited with code ${code}`));
       }
     });
+
+
+    // const child = exec(cmd);
+
+    // child.stdout.on("data", data => {
+    //   event.sender.send("log", data.toString());
+    // });
+
+    // child.stderr.on("data", data => {
+    //   event.sender.send("log", data.toString());
+    // });
+
+    // child.on("close", code => {
+    //   if (code === 0) {
+    //     resolve();
+    //   } else {
+    //     reject(new Error(`NEUTRINO exited with code ${code}`));
+    //   }
+    // });
   });
+});
+
+// 強制終了用ハンドラ
+ipcMain.handle("stop-neutrino", () => {
+  if (!currentProcess) return;
+
+  // WSL 内の ruby と neutrino を強制終了
+  exec(`wsl pkill -f neutrino`);
+  exec(`wsl pkill -f ruby`);
+
+  currentProcess.kill("SIGKILL"); // 強制終了
+  currentProcess = null;
+
+  // ★ ログに「中断しました」を送る
+  event.sender.send("log", "\n=== 中断しました ===\n")
 });
 
 // 「get-song-folders」ハンドラ

@@ -81,13 +81,30 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const songInput = document.getElementById("song");
   const runButton = document.getElementById("run-button");
-  const logElement = document.getElementById("log");
+  // const logElement = document.getElementById("log");
   const progressElement = document.getElementById("progress");
 
-  function appendLog(text) {
-    logElement.textContent += text;
-    logElement.scrollTop = logElement.scrollHeight;
-  }
+  window.neutrinoApi.onLog((data) => {
+    const logArea      = document.getElementById("log");
+    const progressLine = document.getElementById("progress-line");
+
+    // 進捗行だけ色付きで上書き
+    const progressMatch = data.match(/progress\s*=\s*\d+\s*%.*$/m);
+    if (progressMatch) {
+      progressLine.textContent = progressMatch[0];
+    }
+
+    // ★ 空白行を1行に圧縮
+    const cleaned = data.replace(/^\s+$/gm, "\n");  // 空白行 → 改行1つに置換
+
+    logArea.textContent += cleaned;
+    logArea.scrollTop = logArea.scrollHeight;
+  });
+
+  // function appendLog(text) {
+  //   logElement.textContent += text;
+  //   logElement.scrollTop = logElement.scrollHeight;
+  // }
 
   function updateProgress(part, percent) {
     const id = `progress-${part}`;
@@ -127,5 +144,10 @@ window.addEventListener("DOMContentLoaded", () => {
     } catch (e) {
       showErrorModal(e.message);
     }
+  });
+
+  const stopButton = document.getElementById("stop-button");
+  stopButton.addEventListener("click", () => {
+    window.neutrinoApi.stopNeutrino();
   });
 });
