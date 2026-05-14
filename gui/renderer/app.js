@@ -1,6 +1,9 @@
 window.addEventListener("DOMContentLoaded", () => {
   const songSelect = document.getElementById("song-select");
 
+  /**
+   * 「MusicXML」フォルダの一覧を取得
+   */
   async function loadSongFolders() {
     try {
       const folders = await window.neutrinoApi.getSongFolders();
@@ -11,36 +14,59 @@ window.addEventListener("DOMContentLoaded", () => {
         songSelect.appendChild(option);
       });
     } catch (e) {
-      showErrorModal("MusicXML フォルダ一覧の取得に失敗しました:\n" + e);
+      showErrorModal("MusicXMLフォルダ一覧の取得に失敗しました:\n" + e);
     }
   }
 
   loadSongFolders();
 
+  /**
+   * パートごとにモデルの選択肢を表示する
+   *
+   * @param {string[]} parts 対象とするパート
+   */
+  function renderModelSelectors(parts) {
+    const area = document.getElementById("model-select-area");
+    area.innerHTML = ""; // 一旦クリア
 
-songSelect.addEventListener("change", async () => {
-  const song = songSelect.value;
-  if (!song) return;
+    const models = ["MERROW", "SOMA"];
 
-  try {
-    const parts = await window.neutrinoApi.getParts(song);
-
-    // すべてのチェックを一旦外す
-    document.querySelectorAll("#parts input").forEach(cb => {
-      cb.checked = false;
-    });
-
-    // 検出されたパートだけチェック
     parts.forEach(part => {
-      const cb = document.querySelector(`#parts input[value="${part}"]`);
-      if (cb) cb.checked = true;
+      const wrapper = document.createElement("div");
+      wrapper.className = "model-row";
+
+      wrapper.innerHTML = `
+        <label>${part} モデル:</label>
+        <select class="model-select" data-part="${part}">
+          ${models.map(m => `<option value="${m}">${m}</option>`).join("")}
+        </select>
+      `;
+
+      area.appendChild(wrapper);
     });
-
-  } catch (e) {
-    showErrorModal("パート検出に失敗しました:\n" + e);
   }
-});
 
+  songSelect.addEventListener("change", async () => {
+    const song = songSelect.value;
+    if (!song) return;
+
+    try {
+      const parts = await window.neutrinoApi.getParts(song);
+
+      // チェックボックス更新
+      document.querySelectorAll("#parts input").forEach(cb => cb.checked = false);
+      parts.forEach(part => {
+        const cb = document.querySelector(`#parts input[value="${part}"]`);
+        if (cb) cb.checked = true;
+      });
+
+      // モデル選択UIを生成
+      renderModelSelectors(parts);
+
+    } catch (e) {
+      showErrorModal("パート検出に失敗しました:\n" + e);
+    }
+  });
 
   function showErrorModal(message) {
     const modal = document.getElementById("error-modal");
@@ -82,8 +108,24 @@ songSelect.addEventListener("change", async () => {
   });
 
   runButton.addEventListener("click", async () => {
-    // // ★ モーダルテスト
-    // showErrorModal("これはテストエラーです");
-    // return;
+    const song = songSelect.value;
+
+    const parts = Array.from(document.querySelectorAll("#parts input:checked"))
+      .map(x => x.value);
+
+    // modelMapを生成
+    const modelMap = {};
+    document.querySelectorAll(".model-select").forEach(sel => {
+      const part = sel.dataset.part;
+      const model = sel.value;
+      modelMap[part] = model;
+    });
+
+    try {
+      // RubyにmodelMapを渡す
+      await window.neutrinoApi.runNeutrino({ song, parts, modelMap });
+    } catch (e) {
+      showErrorModal(e.message);
+    }
   });
 });

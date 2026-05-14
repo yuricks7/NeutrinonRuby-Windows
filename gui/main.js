@@ -2,6 +2,8 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const { exec } = require("child_process");
 
+const ROOT_WSL_DIRECTORY = '/home/yuricks7/dev/Ruby/projects/20260426_NEUTRINO/neutrino/';
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 900,
@@ -28,10 +30,16 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-// WSL の Ruby を呼び出して NEUTRINO を実行
-ipcMain.handle("run-neutrino", async (event, { song, parts }) => {
+// WSLのRubyを呼び出してNEUTRINOを実行
+ipcMain.handle("run-neutrino", async (event, { song, parts, modelMap }) => {
   return new Promise((resolve, reject) => {
-    const cmd = `wsl ruby /home/yuri/neutrino/neutrino.rb ${song}`;
+
+    // modelMapをJSONに変換
+    const modelMapJson = JSON.stringify(modelMap || {});
+
+    // RubyにsongとmodelMapJsonを渡す
+    const cmd = `wsl ruby ${ROOT_WSL_DIRECTORY}neutrino.rb "${song}" '${modelMapJson}'`;
+
     const child = exec(cmd);
 
     child.stdout.on("data", data => {
@@ -55,7 +63,7 @@ ipcMain.handle("run-neutrino", async (event, { song, parts }) => {
 // 「get-song-folders」ハンドラ
 ipcMain.handle("get-song-folders", async () => {
   return new Promise((resolve, reject) => {
-    const cmd = `wsl ruby /home/yuricks7/dev/Ruby/projects/20260426_NEUTRINO/neutrino/lib/list_musicxml_folders.rb`;
+    const cmd = `wsl ruby ${ROOT_WSL_DIRECTORY}lib/list_musicxml_folders.rb`;
 
     exec(cmd, (err, stdout, stderr) => {
       if (err) {
@@ -75,7 +83,7 @@ ipcMain.handle("get-song-folders", async () => {
 
 ipcMain.handle("detect-parts", async (_event, song) => {
   return new Promise((resolve, reject) => {
-    const cmd = `wsl ruby /home/yuricks7/dev/Ruby/projects/20260426_NEUTRINO/neutrino/lib/detect_parts.rb ${song}`;
+    const cmd = `wsl ruby ${ROOT_WSL_DIRECTORY}lib/detect_parts.rb ${song}`;
 
     exec(cmd, (err, stdout, stderr) => {
       if (err) {
