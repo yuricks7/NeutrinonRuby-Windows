@@ -55,7 +55,27 @@ ipcMain.handle("run-neutrino", async (event, { song, parts }) => {
 // 「get-song-folders」ハンドラ
 ipcMain.handle("get-song-folders", async () => {
   return new Promise((resolve, reject) => {
-    const cmd = `wsl ruby /home/yuri/neutrino/lib/list_musicxml_folders.rb`;
+    const cmd = `wsl ruby /home/yuricks7/dev/Ruby/projects/20260426_NEUTRINO/neutrino/lib/list_musicxml_folders.rb`;
+
+    exec(cmd, (err, stdout, stderr) => {
+      if (err) {
+        reject(stderr || err.message);
+        return;
+      }
+
+      try {
+        const list = JSON.parse(stdout);
+        resolve(list);
+      } catch (e) {
+        reject("JSON parse error: " + e.message);
+      }
+    });
+  });
+});
+
+ipcMain.handle("detect-parts", async (_event, song) => {
+  return new Promise((resolve, reject) => {
+    const cmd = `wsl ruby /home/yuricks7/dev/Ruby/projects/20260426_NEUTRINO/neutrino/lib/detect_parts.rb ${song}`;
 
     exec(cmd, (err, stdout, stderr) => {
       if (err) {

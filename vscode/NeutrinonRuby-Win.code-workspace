@@ -1,7 +1,8 @@
 {
 	"folders": [
 		{
-			"path": ".."
+			"name": "All",
+			"path": "../"
 		}
 	],
 	"settings": {}

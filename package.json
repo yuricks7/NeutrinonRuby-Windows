@@ -1,8 +1,11 @@
 {
   "name": "neutrino-gui",
   "version": "1.0.0",
-  "main": "main.js",
+  "main": "gui/main.js",
   "scripts": {
     "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^30.5.1"
   }
 }
