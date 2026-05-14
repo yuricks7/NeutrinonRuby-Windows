@@ -43,12 +43,17 @@ ipcMain.handle("run-neutrino", async (event, { song, parts, modelMap }) => {
     const cmd = `wsl ruby ${ROOT_WSL_DIRECTORY}neutrino.rb "${song}" '${modelMapJson}'`;
 
     currentProcess = exec(cmd);
+    // const iconv = require("iconv-lite");
 
     currentProcess.stdout.on("data", data => {
+      // const decoded = iconv.decode(Buffer.from(data), "shift_jis");
+      // event.sender.send("log", decoded);
       event.sender.send("log", data.toString());
     });
 
     currentProcess.stderr.on("data", data => {
+      // const decoded = iconv.decode(Buffer.from(data), "shift_jis");
+      // event.sender.send("log", decoded);
       event.sender.send("log", data.toString());
     });
 
