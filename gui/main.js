@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const { exec } = require("child_process");
+const iconv    = require("iconv-lite");
 
 const ROOT_WSL_DIRECTORY = '/home/yuricks7/dev/Ruby/projects/20260426_NEUTRINO/neutrino/';
 
@@ -42,53 +43,49 @@ ipcMain.handle("run-neutrino", async (event, { song, parts, modelMap }) => {
     // RubyにsongとmodelMapJsonを渡す
     const cmd = `wsl ruby ${ROOT_WSL_DIRECTORY}neutrino.rb "${song}" '${modelMapJson}'`;
 
-    currentProcess = exec(cmd);
-    // const iconv = require("iconv-lite");
+    currentProcess = exec(cmd, { encoding: "binary", maxBuffer: 1024 * 1024 * 10 });
 
-    currentProcess.stdout.on("data", data => {
-      // const decoded = iconv.decode(Buffer.from(data), "shift_jis");
-      // event.sender.send("log", decoded);
-      event.sender.send("log", data.toString());
+    // 文字化け対策
+    function safeDecode(data) {
+      if (!data) return "";
+
+      const buf = Buffer.isBuffer(data) ? data : Buffer.from(data, "binary");
+
+      // まず UTF-8 として decode
+      let utf8 = iconv.decode(buf, "utf-8");
+
+      // UTF-8 が文字化けしているか判定（� が大量に含まれる）
+      const mojibake = utf8.includes("�");
+
+      if (mojibake) {
+        // Shift_JIS として decode し直す
+        return iconv.decode(buf, "shift_jis");
+      }
+
+      return utf8;
+    }
+
+    currentProcess.stdout.on("data", (data) => {
+      event.sender.send("log", safeDecode(data));
     });
 
-    currentProcess.stderr.on("data", data => {
-      // const decoded = iconv.decode(Buffer.from(data), "shift_jis");
-      // event.sender.send("log", decoded);
-      event.sender.send("log", data.toString());
+    currentProcess.stderr.on("data", (data) => {
+      event.sender.send("log", safeDecode(data));
     });
 
     currentProcess.on("close", code => {
       currentProcess = null; // 終了したらクリア
-      if (code === 0) {
-        resolve();
-      } else {
+      if (code !== 0) {
         reject(new Error(`NEUTRINO exited with code ${code}`));
+      } else {
+        resolve();
       }
     });
-
-
-    // const child = exec(cmd);
-
-    // child.stdout.on("data", data => {
-    //   event.sender.send("log", data.toString());
-    // });
-
-    // child.stderr.on("data", data => {
-    //   event.sender.send("log", data.toString());
-    // });
-
-    // child.on("close", code => {
-    //   if (code === 0) {
-    //     resolve();
-    //   } else {
-    //     reject(new Error(`NEUTRINO exited with code ${code}`));
-    //   }
-    // });
   });
 });
 
 // 強制終了用ハンドラ
-ipcMain.handle("stop-neutrino", () => {
+ipcMain.handle("stop-neutrino", (event) => {
   if (!currentProcess) return;
 
   // WSL 内の ruby と neutrino を強制終了
