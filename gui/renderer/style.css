@@ -30,6 +30,7 @@ h1 {
 }
 
 #progress-line {
+  white-space: pre;
   font-weight: bold;
   color: #4CAF50;
   margin-bottom: 8px;

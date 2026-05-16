@@ -84,27 +84,37 @@ window.addEventListener("DOMContentLoaded", () => {
   // const logElement = document.getElementById("log");
   const progressElement = document.getElementById("progress");
 
+  /**
+   * ログの整形
+   */
   window.neutrinoApi.onLog((data) => {
     const logArea      = document.getElementById("log");
     const progressLine = document.getElementById("progress-line");
 
-    // 進捗行だけ色付きで上書き
+    // progress行
     const progressMatch = data.match(/progress\s*=\s*\d+\s*%.*$/m);
     if (progressMatch) {
       progressLine.textContent = progressMatch[0];
     }
 
-    // ★ 空白行を1行に圧縮
-    const cleaned = data.replace(/^\s+$/gm, "\n");  // 空白行 → 改行1つに置換
+    // finish行（★改行なしの正規表現）
+    const finishMatch = data.match(/finish\s*:\s[\d\.]+\s*\[sec\]/m);
 
+    if (finishMatch) {
+      progressLine.textContent = `${progressLine.textContent}\n${finishMatch[0]}`;
+    }
+
+    let cleaned = data.replace(/^\s+$/gm, "\n");
+    cleaned = cleaned.replace(/→\s*(C:\\[^ \n]+)/, "\n→$1");
+    // → の後の Windows パスを全部改行で区切る
+cleaned = cleaned.replace(/→\s*(C:\\[^\n]+)/, (match, group) => {
+  // group = "C:\neutrino\Apps\bin\musicXMLtoLabel.exe C:\neutrino\Apps\score\..."
+  const parts = group.split(/\s+(?=C:\\)/g); // C:\ で始まる部分ごとに分割
+  return "→" + parts.map(p => "\n" + p).join("");
+});
     logArea.textContent += cleaned;
     logArea.scrollTop = logArea.scrollHeight;
   });
-
-  // function appendLog(text) {
-  //   logElement.textContent += text;
-  //   logElement.scrollTop = logElement.scrollHeight;
-  // }
 
   function updateProgress(part, percent) {
     const id = `progress-${part}`;
@@ -119,10 +129,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const empty = "-".repeat(10 - percent / 10);
     row.querySelector(".bar").textContent = `[${filled}${empty}] ${percent}%`;
   }
-
-  window.neutrinoApi.onLog((data) => {
-    appendLog(data);
-  });
 
   runButton.addEventListener("click", async () => {
     const song = songSelect.value;
