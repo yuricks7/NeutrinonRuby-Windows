@@ -9,8 +9,12 @@ const fs       = require("fs");
  */
 function createWindow() {
   const win = new BrowserWindow({
-    width: 900,
-    height: 700,
+    // ウィンドウの設定
+    width:  900,
+    height: 900,
+    x: 200, // 横位置
+    y: 100, // 縦位置
+
     webPreferences: {
       preload: path.join(__dirname, "renderer", "preload.js"),
       nodeIntegration: false,
