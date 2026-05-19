@@ -4,9 +4,9 @@ const { exec } = require("child_process");
 const iconv    = require("iconv-lite");
 const fs       = require("fs");
 
-const ROOT_WSL_DIRECTORY = '/home/yuricks7/dev/Ruby/projects/20260426_NEUTRINO/neutrino/';
-const APPS_DIRECTORY = '';
-
+/**
+ * 処理
+ */
 function createWindow() {
   const win = new BrowserWindow({
     width: 900,
@@ -20,6 +20,12 @@ function createWindow() {
 
   // HTMLを読み込む
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
+
+  const configPath = path.join(__dirname, "config-path.json");
+  const pathConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+
+  const rootWslDir  = pathConfig.paths.root_wsl_directory;
+  const neutrinoDir = pathConfig.paths.apps_directory;
 
   // ======================================
   // IPCハンドラ（NEUTRINO操作関係のAPI）
@@ -39,7 +45,7 @@ function createWindow() {
       const partsJson    = JSON.stringify(parts || []);
 
       // RubyにsongとmodelMapJsonを渡す
-      const cmd = `wsl ruby ${ROOT_WSL_DIRECTORY}neutrino.rb "${song}" '${partsJson}' '${modelMapJson}'`;
+      const cmd = `wsl ruby ${rootWslDir}neutrino.rb "${song}" '${partsJson}' '${modelMapJson}'`;
 
       currentProcess = exec(cmd, { encoding: "binary", maxBuffer: 1024 * 1024 * 10 });
 
@@ -100,7 +106,7 @@ function createWindow() {
   // 「get-song-folders」ハンドラ
   ipcMain.handle("get-song-folders", async () => {
     return new Promise((resolve, reject) => {
-      const cmd = `wsl ruby ${ROOT_WSL_DIRECTORY}lib/list_musicxml_folders.rb`;
+      const cmd = `wsl ruby ${rootWslDir}lib/list_musicxml_folders.rb`;
 
       exec(cmd, (err, stdout, stderr) => {
         if (err) {
@@ -121,7 +127,7 @@ function createWindow() {
   // パート一覧を取得する
   ipcMain.handle("detect-parts", async (_event, song) => {
     return new Promise((resolve, reject) => {
-      const cmd = `wsl ruby ${ROOT_WSL_DIRECTORY}lib/detect_parts.rb ${song}`;
+      const cmd = `wsl ruby ${rootWslDir}lib/detect_parts.rb ${song}`;
 
       exec(cmd, (err, stdout, stderr) => {
         if (err) {
@@ -142,7 +148,7 @@ function createWindow() {
   // モデル一覧を返す
 ipcMain.handle("get-model-list", async () => {
   try {
-    const modelDir = "C:\\Neutrino\\Apps\\model";
+    const modelDir = `${neutrinoDir}model`;
     const dirs = fs.readdirSync(modelDir, { withFileTypes: true })
                    .filter(d => d.isDirectory())
                    .map(d => d.name);
@@ -156,7 +162,7 @@ ipcMain.handle("get-model-list", async () => {
   // モデルの設定JSONを返す
 ipcMain.handle("get-model-config", async () => {
   try {
-    const configPath = "C:\\Neutrino\\Apps\\config-model.json";
+    const configPath = `${neutrinoDir}config-model.json`;
     const json = fs.readFileSync(configPath, "utf-8");
     return JSON.parse(json);
   } catch (e) {
