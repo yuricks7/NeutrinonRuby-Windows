@@ -21,32 +21,32 @@ function createWindow() {
   // HTMLを読み込む
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
 
-  const configPath = path.join(__dirname, "config-path.json");
-  const pathConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-
-  const rootWslDir  = pathConfig.paths.root_wsl_directory;
-  const neutrinoDir = pathConfig.paths.apps_directory;
+  // JSONを読み込む
+  const configPath = path.join(__dirname, "config.json");
+  const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+  const rootWslDir  = config.paths.root_wsl_directory;
+  const neutrinoDir = config.paths.apps_directory;
 
   // ======================================
-  // IPCハンドラ（NEUTRINO操作関係のAPI）
+  // 以下、IPCハンドラ（NEUTRINO操作関係のAPI）
   // ======================================
 
   // WSLのRubyを呼び出してNEUTRINOを実行
   let currentProcess = null; // 中断用の変数
   ipcMain.handle("run-neutrino", async (event, { song, parts, modelMap }) => {
 
-    // ★ 追加：現在処理中のパート一覧をrendererに送る
+    // 現在処理中のパート一覧をapp.jsに送る
     event.sender.send("parts-list", parts);
 
     return new Promise((resolve, reject) => {
 
-      // modelMapをJSONに変換
-      const modelMapJson = JSON.stringify(modelMap || {});
+      // 設定ファイル（JSON）のデータをRubyに渡す
       const partsJson    = JSON.stringify(parts || []);
+      const modelMapJson = JSON.stringify(modelMap || {});
+      const configJson = JSON.stringify(config);
+      const cmd = `wsl ruby ${rootWslDir}neutrino.rb "${song}" '${partsJson}' '${modelMapJson}' '${configJson}'`;
 
-      // RubyにsongとmodelMapJsonを渡す
-      const cmd = `wsl ruby ${rootWslDir}neutrino.rb "${song}" '${partsJson}' '${modelMapJson}'`;
-
+      // 実行
       currentProcess = exec(cmd, { encoding: "binary", maxBuffer: 1024 * 1024 * 10 });
 
       // 文字化け対策
@@ -103,7 +103,14 @@ function createWindow() {
     event.sender.send("log", "\n=== 中断しました ===\n")
   });
 
-  // 「get-song-folders」ハンドラ
+  /**
+   * 設定ファイルを取得する
+   */
+  ipcMain.handle("get-config", async () => config);
+
+  /**
+   * 曲名を取得する
+   */
   ipcMain.handle("get-song-folders", async () => {
     return new Promise((resolve, reject) => {
       const cmd = `wsl ruby ${rootWslDir}lib/list_musicxml_folders.rb`;
@@ -124,7 +131,9 @@ function createWindow() {
     });
   });
 
-  // パート一覧を取得する
+  /**
+   * パート一覧を取得する
+   */
   ipcMain.handle("detect-parts", async (_event, song) => {
     return new Promise((resolve, reject) => {
       const cmd = `wsl ruby ${rootWslDir}lib/detect_parts.rb ${song}`;
@@ -145,31 +154,21 @@ function createWindow() {
     });
   });
 
-  // モデル一覧を返す
-ipcMain.handle("get-model-list", async () => {
-  try {
-    const modelDir = `${neutrinoDir}model`;
-    const dirs = fs.readdirSync(modelDir, { withFileTypes: true })
-                   .filter(d => d.isDirectory())
-                   .map(d => d.name);
-    return dirs;
-  } catch (e) {
-    console.error("get-model-list error:", e);
-    return []; // ★ 失敗しても空配列を返す
-  }
-});
-
-  // モデルの設定JSONを返す
-ipcMain.handle("get-model-config", async () => {
-  try {
-    const configPath = `${neutrinoDir}config-model.json`;
-    const json = fs.readFileSync(configPath, "utf-8");
-    return JSON.parse(json);
-  } catch (e) {
-    console.error("get-model-config error:", e);
-    return { defaultModels: {} }; // ★ 失敗しても空の設定を返す
-  }
-});
+  /**
+   * モデル一覧を返す
+   */
+  ipcMain.handle("get-model-list", async () => {
+    try {
+      const modelDir = `${neutrinoDir}model`;
+      const dirs = fs.readdirSync(modelDir, { withFileTypes: true })
+                     .filter(d => d.isDirectory())
+                     .map(d => d.name);
+      return dirs;
+    } catch (e) {
+      console.error("get-model-list error:", e);
+      return []; // ★ 失敗しても空配列を返す
+    }
+  });
 }
 
 app.whenReady().then(() => {
