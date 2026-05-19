@@ -7,5 +7,10 @@ contextBridge.exposeInMainWorld("neutrinoApi", {
     callback(data)
   ),
   getSongFolders: () => ipcRenderer.invoke("get-song-folders"),
-  getParts: (song) => ipcRenderer.invoke("detect-parts", song)
+  getParts: (song) => ipcRenderer.invoke("detect-parts", song),
+  getPartsList: (callback) => ipcRenderer.on("parts-list", (e, parts) =>
+    callback(parts)
+  ),
+  getModelList: () => ipcRenderer.invoke("get-model-list"),
+  getModelConfig: () => ipcRenderer.invoke("get-model-config"),
 });

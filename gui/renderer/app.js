@@ -1,9 +1,31 @@
 window.addEventListener("DOMContentLoaded", () => {
-  const songSelect = document.getElementById("song-select");
+  const ORDER = ["Soprano", "Alto", "Tenor", "Baritone"];
+
+  // // まだ使ってない
+  // const songInput = document.getElementById("song");
+
+  /**
+   * パート一覧を取得
+   */
+  let currentParts = [];
+  let partProgress = {};
+  window.neutrinoApi.getPartsList((parts) => {
+    // 並び順を固定
+    parts.sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
+
+    // 並べ替えたデータを格納
+    currentParts = parts;
+    partProgress = {};
+    parts.forEach(p => partProgress[p] = 0);
+
+    renderOverallProgress(); // 全体進捗を初期化
+  });
+
 
   /**
    * 「MusicXML」フォルダの一覧を取得
    */
+  const songSelect = document.getElementById("song-select");
   async function loadSongFolders() {
     try {
       const folders = await window.neutrinoApi.getSongFolders();
@@ -25,11 +47,19 @@ window.addEventListener("DOMContentLoaded", () => {
    *
    * @param {string[]} parts 対象とするパート
    */
-  function renderModelSelectors(parts) {
+  async function renderModelSelectors(parts) {
     const area = document.getElementById("model-select-area");
     area.innerHTML = ""; // 一旦クリア
 
-    const models = ["MERROW", "SOMA"];
+    // ★ モデル一覧を取得（フォルダから）
+    const models = await window.neutrinoApi.getModelList();
+
+    // ★ 初期値（JSON）を取得
+    const config = await window.neutrinoApi.getModelConfig();
+    const defaults = config.defaultModels || {};
+
+    // ★ モデル名をソート
+    models.sort();
 
     parts.forEach(part => {
       const wrapper = document.createElement("div");
@@ -43,87 +73,181 @@ window.addEventListener("DOMContentLoaded", () => {
       `;
 
       area.appendChild(wrapper);
+
+      // ★ 初期値をセット
+      const select = wrapper.querySelector("select");
+      if (defaults[part]) {
+        select.value = defaults[part];
+      }
     });
   }
 
+  /**
+   * 曲名を選択する
+   */
   songSelect.addEventListener("change", async () => {
     const song = songSelect.value;
     if (!song) return;
 
     try {
+      // パート順を固定
       const parts = await window.neutrinoApi.getParts(song);
+      parts.sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
 
       // チェックボックス更新
-      document.querySelectorAll("#parts input").forEach(cb => cb.checked = false);
+      document.querySelectorAll("#parts input").forEach(checkBox => checkBox.checked = false);
       parts.forEach(part => {
-        const cb = document.querySelector(`#parts input[value="${part}"]`);
-        if (cb) cb.checked = true;
+        const checkedPart = document.querySelector(`#parts input[value="${part}"]`);
+        if (checkedPart) checkedPart.checked = true;
       });
 
       // モデル選択UIを生成
-      renderModelSelectors(parts);
+      await renderModelSelectors(parts);
 
     } catch (e) {
       showErrorModal("パート検出に失敗しました:\n" + e);
     }
   });
 
+  /**
+   * モーダルでエラーメッセージを表示する
+   *
+   * @param {string} message
+   */
   function showErrorModal(message) {
     const modal = document.getElementById("error-modal");
-    const msg = document.getElementById("error-message");
+    const msg   = document.getElementById("error-message");
     msg.textContent = message;
     modal.classList.remove("hidden");
   }
 
+  /**
+   * モーダルを閉じる
+   */
   document.getElementById("error-close").addEventListener("click", () => {
     document.getElementById("error-modal").classList.add("hidden");
   });
 
-  const songInput = document.getElementById("song");
-  const runButton = document.getElementById("run-button");
-  // const logElement = document.getElementById("log");
-  const progressElement = document.getElementById("progress");
+  /**
+   * パートごとの進捗を更新する
+   *
+   * @param {string} part
+   * @param {number} percent
+   */
+  function updatePartProgressUI(part, percent) {
+    const area = document.getElementById("progress");
+    let row = document.getElementById(`progress-${part}`);
 
+    if (!row) {
+      row = document.createElement("div");
+      row.id = `progress-${part}`;
+      area.appendChild(row);
+    }
+
+    // パート名の幅を揃える
+    const longest   = "Baritone";
+    const partLabel = part.padEnd(longest.length + 1);
+
+    // 進捗バーを生成する
+    const MAX = 10;
+    const GRID = 10;
+    const filled = "#".repeat(percent / GRID);
+    const empty  = "-".repeat(MAX - percent / GRID);
+    const bar = `[${filled}${empty}]`;
+
+    // 進捗バーの書式
+    row.textContent = `${partLabel} ${bar} ${String(percent).padStart(3)}%`;
+
+    // 処理を完了したらグレーアウトする
+    const DONE = "progress-done";
+    if (percent >= 100) {
+      row.classList.add(DONE);
+    } else {
+      row.classList.remove(DONE);
+    }
+  }
+
+  /**
+   * 全体の進捗を更新
+   */
+  function renderOverallProgress() {
+    const area = document.getElementById("progress");
+
+    // 要素の生成
+    let overall = document.getElementById("overall-progress");
+    if (!overall) {
+      overall = document.createElement("div");
+      overall.id = "overall-progress";
+      overall.style.fontWeight = "bold";
+      overall.style.marginBottom = "8px";
+      area.prepend(overall);
+    }
+
+    // パーセンテージを算出
+    const done = Object.values(partProgress).filter(v => v === 100).length;
+    const total = currentParts.length;
+    const percent = Math.floor((done / total) * 100);
+
+    // 書式の設定
+    overall.textContent = `[全体進捗] ${done}/${total} (${percent}%)`;
+  }
+
+  /**
+   * ログの整形
+   */
   window.neutrinoApi.onLog((data) => {
     const logArea      = document.getElementById("log");
     const progressLine = document.getElementById("progress-line");
 
-    // 進捗行だけ色付きで上書き
+    // progress行の改行位置を揃える
     const progressMatch = data.match(/progress\s*=\s*\d+\s*%.*$/m);
     if (progressMatch) {
       progressLine.textContent = progressMatch[0];
     }
 
-    // ★ 空白行を1行に圧縮
-    const cleaned = data.replace(/^\s+$/gm, "\n");  // 空白行 → 改行1つに置換
+    // finish行を改行する
+    const finishMatch = data.match(/finish\s*:\s[\d\.]+\s*\[sec\]/m); // 改行なしの正規表現
+    if (finishMatch) {
+      progressLine.textContent = `${progressLine.textContent}\n${finishMatch[0]}`;
+
+      // 進捗バーの編集
+      const currentPart = currentParts.find(part => partProgress[part] < 100);
+      if (currentPart) {
+        partProgress[currentPart] = 100;   // ★ ここが重要
+        updatePartProgressUI(currentPart, 100);
+        renderOverallProgress();
+      }
+    }
+
+    // 処理するファイルパスの出力位置を揃える
+    let cleaned = data.replace(/^\s+$/gm, "\n"); //`→`を削除しつつ、パスを改行で揃える
+    cleaned = cleaned.replace(/→\s*(C:\\[^\n]+)/g, (match, group) => { // `→`を含む行をそのままパスだけにする
+      const parts = group.split(/\s+(?=C:\\)/g);
+      return parts.map(p => "\n" + p).join("");
+    });
 
     logArea.textContent += cleaned;
     logArea.scrollTop = logArea.scrollHeight;
-  });
 
-  // function appendLog(text) {
-  //   logElement.textContent += text;
-  //   logElement.scrollTop = logElement.scrollHeight;
-  // }
+    // 処理中のパートを表示
+    const p = data.match(/progress\s*=\s*(\d+)\s*%/);
+    if (p) {
+      const percent = Number(p[1]);
 
-  function updateProgress(part, percent) {
-    const id = `progress-${part}`;
-    let row = document.getElementById(id);
-    if (!row) {
-      row = document.createElement("div");
-      row.id = id;
-      row.innerHTML = `<b>${part}</b>: <span class="bar"></span>`;
-      progressElement.appendChild(row);
+      // 処理中のパートを選択
+      const currentPart = currentParts.find(part => partProgress[part] < 100); // 最初の未完了パート
+      if (currentPart) {
+        partProgress[currentPart] = percent;
+        updatePartProgressUI(currentPart, percent);
+        renderOverallProgress();
+      }
     }
-    const filled = "#".repeat(percent / 10);
-    const empty = "-".repeat(10 - percent / 10);
-    row.querySelector(".bar").textContent = `[${filled}${empty}] ${percent}%`;
-  }
-
-  window.neutrinoApi.onLog((data) => {
-    appendLog(data);
   });
 
+  /**
+   * Runボタンのイベント
+   */
+  const runButton = document.getElementById("run-button");
   runButton.addEventListener("click", async () => {
     const song = songSelect.value;
 
@@ -146,6 +270,9 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  /**
+   * 緊急停止ボタンのイベント
+   */
   const stopButton = document.getElementById("stop-button");
   stopButton.addEventListener("click", () => {
     window.neutrinoApi.stopNeutrino();
