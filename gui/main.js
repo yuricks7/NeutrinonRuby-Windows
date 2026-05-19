@@ -28,7 +28,7 @@ function createWindow() {
   const neutrinoDir = config.paths.apps_directory;
 
   // ======================================
-  // IPCハンドラ（NEUTRINO操作関係のAPI）
+  // 以下、IPCハンドラ（NEUTRINO操作関係のAPI）
   // ======================================
 
   // WSLのRubyを呼び出してNEUTRINOを実行
@@ -40,7 +40,7 @@ function createWindow() {
 
     return new Promise((resolve, reject) => {
 
-      // 設定ファイル（JSON）をRubyに渡す
+      // 設定ファイル（JSON）のデータをRubyに渡す
       const partsJson    = JSON.stringify(parts || []);
       const modelMapJson = JSON.stringify(modelMap || {});
       const configJson = JSON.stringify(config);
@@ -161,26 +161,12 @@ function createWindow() {
     try {
       const modelDir = `${neutrinoDir}model`;
       const dirs = fs.readdirSync(modelDir, { withFileTypes: true })
-                    .filter(d => d.isDirectory())
-                    .map(d => d.name);
+                     .filter(d => d.isDirectory())
+                     .map(d => d.name);
       return dirs;
     } catch (e) {
       console.error("get-model-list error:", e);
       return []; // ★ 失敗しても空配列を返す
-    }
-  });
-
-  /**
-   * モデルの設定JSONを返す
-   */
-  ipcMain.handle("get-model-config", async () => {
-    try {
-      const configPath = `${neutrinoDir}config-model.json`;
-      const json = fs.readFileSync(configPath, "utf-8");
-      return JSON.parse(json);
-    } catch (e) {
-      console.error("get-model-config error:", e);
-      return { defaultModels: {} }; // ★ 失敗しても空の設定を返す
     }
   });
 }
