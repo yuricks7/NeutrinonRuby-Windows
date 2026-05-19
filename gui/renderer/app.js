@@ -74,7 +74,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
       area.appendChild(wrapper);
 
-      // ★ 初期値をセット
+      // 初期値をセット
       const select = wrapper.querySelector("select");
       if (defaults[part]) {
         select.value = defaults[part];
@@ -199,18 +199,9 @@ window.addEventListener("DOMContentLoaded", () => {
     const logArea      = document.getElementById("log");
     const progressLine = document.getElementById("progress-line");
 
-    // progress行の改行位置を揃える
-    const progressMatch = data.match(/progress\s*=\s*\d+\s*%.*$/m);
-    if (progressMatch) {
-      progressLine.textContent = progressMatch[0];
-    }
-
-    // finish行を改行する
-    const finishMatch = data.match(/finish\s*:\s[\d\.]+\s*\[sec\]/m); // 改行なしの正規表現
-    if (finishMatch) {
-      progressLine.textContent = `${progressLine.textContent}\n${finishMatch[0]}`;
-
       // 進捗バーの編集
+    const finishMatch = data.match(/finish\s*:\s[\d\.]+\s*\[sec\]/m); // 改行なし（にしたい）
+    if (finishMatch) {
       const currentPart = currentParts.find(part => partProgress[part] < 100);
       if (currentPart) {
         partProgress[currentPart] = 100;   // ★ ここが重要
