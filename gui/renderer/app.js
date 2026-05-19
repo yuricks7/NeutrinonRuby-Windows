@@ -219,15 +219,13 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // パスの出力位置を揃える
-    let cleaned = data.replace(/^\s+$/gm, "\n");
-    // `→`の後のWindowsパスを全部改行で区切る
-    cleaned = cleaned.replace(/→\s*(C:\\[^\n]+)/, (match, group) => {
-    // group = "C:\neutrino\Apps\bin\musicXMLtoLabel.exe C:\neutrino\Apps\score\..."
-
-      const parts = group.split(/\s+(?=C:\\)/g); // C:\ で始まる部分ごとに分割
-      return "→" + parts.map(p => "\n" + p).join(""); // 改行位置を揃える
+    // 処理するファイルパスの出力位置を揃える
+    let cleaned = data.replace(/^\s+$/gm, "\n"); //`→`を削除しつつ、パスを改行で揃える
+    cleaned = cleaned.replace(/→\s*(C:\\[^\n]+)/g, (match, group) => { // `→`を含む行をそのままパスだけにする
+      const parts = group.split(/\s+(?=C:\\)/g);
+      return parts.map(p => "\n" + p).join("");
     });
+
     logArea.textContent += cleaned;
     logArea.scrollTop = logArea.scrollHeight;
 
