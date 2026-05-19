@@ -6,8 +6,12 @@ node_modules/
 
 *.<拡張子>
 *.log
+*.json
 
 # 独立してリポジトリ化
 
+
+
+# ファイルを除外
+
 config.rb
-config.json
