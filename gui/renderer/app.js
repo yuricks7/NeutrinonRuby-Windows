@@ -149,13 +149,15 @@ window.addEventListener("DOMContentLoaded", () => {
     const partLabel = part.padEnd(longest.length + 1);
 
     // 進捗バーを生成する
-    const MAX = 10;
+    const MAX  = 10;
     const GRID = 10;
-    const filled = "#".repeat(percent / GRID);
-    const empty  = "-".repeat(MAX - percent / GRID);
+    const filledCount = Math.floor(percent / GRID);
+    const emptyCount  = MAX - filledCount;
+    const filled = "#".repeat(filledCount);
+    const empty  = "-".repeat(emptyCount);
     const bar = `[${filled}${empty}]`;
 
-    // 進捗バーの書式
+    // 桁を揃えた書式にする
     row.textContent = `${partLabel} ${bar} ${String(percent).padStart(3)}%`;
 
     // 処理を完了したらグレーアウトする
@@ -211,7 +213,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     // 処理するファイルパスの出力位置を揃える
-    let cleaned = data.replace(/^\s+$/gm, "\n"); //`→`を削除しつつ、パスを改行で揃える
+    let cleaned = data.replace(/^\s{2,}$/gm, "\n"); //`→`を削除しつつ、パスを改行で揃える
     cleaned = cleaned.replace(/→\s*(C:\\[^\n]+)/g, (match, group) => { // `→`を含む行をそのままパスだけにする
       const parts = group.split(/\s+(?=C:\\)/g);
       return parts.map(p => "\n" + p).join("");
