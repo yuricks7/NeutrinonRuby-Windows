@@ -55,11 +55,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const models = await window.neutrinoApi.getModelList();
 
     // ★ 初期値（JSON）を取得
-    // const config = await window.neutrinoApi.getModelConfig();
-    // const defaults = config.defaultModels || {};
-
-const config = await window.neutrinoApi.getConfig();
-const defaults = config.models.default;
+    const config = await window.neutrinoApi.getConfig();
+    const defaults = config.models.default;
 
     // ★ モデル名をソート
     models.sort();
@@ -77,7 +74,7 @@ const defaults = config.models.default;
 
       area.appendChild(wrapper);
 
-      // ★ 初期値をセット
+      // 初期値をセット
       const select = wrapper.querySelector("select");
       if (defaults[part]) {
         select.value = defaults[part];
@@ -202,18 +199,9 @@ const defaults = config.models.default;
     const logArea      = document.getElementById("log");
     const progressLine = document.getElementById("progress-line");
 
-    // progress行の改行位置を揃える
-    const progressMatch = data.match(/progress\s*=\s*\d+\s*%.*$/m);
-    if (progressMatch) {
-      progressLine.textContent = progressMatch[0];
-    }
-
-    // finish行を改行する
-    const finishMatch = data.match(/finish\s*:\s[\d\.]+\s*\[sec\]/m); // 改行なしの正規表現
-    if (finishMatch) {
-      progressLine.textContent = `${progressLine.textContent}\n${finishMatch[0]}`;
-
       // 進捗バーの編集
+    const finishMatch = data.match(/finish\s*:\s[\d\.]+\s*\[sec\]/m); // 改行なし（にしたい）
+    if (finishMatch) {
       const currentPart = currentParts.find(part => partProgress[part] < 100);
       if (currentPart) {
         partProgress[currentPart] = 100;   // ★ ここが重要

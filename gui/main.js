@@ -163,7 +163,7 @@ function createWindow() {
       const dirs = fs.readdirSync(modelDir, { withFileTypes: true })
                      .filter(d => d.isDirectory())
                      .map(d => d.name);
-      return dirs;
+      return dirs;fix/use-json
     } catch (e) {
       console.error("get-model-list error:", e);
       return []; // ★ 失敗しても空配列を返す
