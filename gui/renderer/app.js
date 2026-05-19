@@ -55,11 +55,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const models = await window.neutrinoApi.getModelList();
 
     // ★ 初期値（JSON）を取得
-    // const config = await window.neutrinoApi.getModelConfig();
-    // const defaults = config.defaultModels || {};
-
-const config = await window.neutrinoApi.getConfig();
-const defaults = config.models.default;
+    const config = await window.neutrinoApi.getConfig();
+    const defaults = config.models.default;
 
     // ★ モデル名をソート
     models.sort();
