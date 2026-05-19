@@ -13,4 +13,5 @@ contextBridge.exposeInMainWorld("neutrinoApi", {
   ),
   getModelList: () => ipcRenderer.invoke("get-model-list"),
   getModelConfig: () => ipcRenderer.invoke("get-model-config"),
+  getConfig: () => ipcRenderer.invoke("get-config"),
 });
