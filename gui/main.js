@@ -36,9 +36,10 @@ function createWindow() {
 
       // modelMapをJSONに変換
       const modelMapJson = JSON.stringify(modelMap || {});
+      const partsJson    = JSON.stringify(parts || []);
 
       // RubyにsongとmodelMapJsonを渡す
-      const cmd = `wsl ruby ${ROOT_WSL_DIRECTORY}neutrino.rb "${song}" '${modelMapJson}'`;
+      const cmd = `wsl ruby ${ROOT_WSL_DIRECTORY}neutrino.rb "${song}" '${partsJson}' '${modelMapJson}'`;
 
       currentProcess = exec(cmd, { encoding: "binary", maxBuffer: 1024 * 1024 * 10 });
 
